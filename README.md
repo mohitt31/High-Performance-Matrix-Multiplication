@@ -9,22 +9,22 @@
 
 This project implements a highly optimized Matrix Multiplication engine. Unlike standard implementations that rely on compiler auto-vectorization, this project utilizes **Manual SIMD Intrinsics (AVX2)** and **Multithreading** to squeeze every bit of performance from the CPU.
 
-Achieved a **56.47x Speedup** on macOS (10 Threads) with verified correctness checks.
+Achieved a **47.64x Speedup** on a Linux x86_64 environment (AMD EPYC 9V74 80-Core) with verified correctness checks.
 
 ---
 
 ## 🏎️ Performance Benchmarks (1024x1024)
 
-Benchmarks recorded on **macOS (10 Threads)**.
+Benchmarks recorded natively on **Linux x86_64 (AMD EPYC 9V74 80-Core Processor)**.
 *(Note: Median execution time over 5 runs with strict max absolute difference correctness checking)*
 
 | Optimization Level | Median Time | Speedup | Technical Breakdown |
 | :--- | :--- | :--- | :--- |
-| **1. Naive** | `15.439 s` | 1.0x | Baseline $O(N^3)$ algorithm. Heavy cache misses. |
-| **2. Optimized** | `0.458 s` | 33.69x | **Loop Reordering (`i-k-j`)**: Maximizes Spatial Locality. |
-| **3. Tiled** | `0.715 s` | 21.60x | **L1 Cache Blocking**: 64x64 tiles to prevent Cache Thrashing. |
-| **4. AVX2 (Manual)** | `0.638 s` | 24.21x | **Explicit Vectorization**: Using `_mm256_fmadd_pd` manually. |
-| **5. Parallel AVX** | **0.273 s** | **56.47x** | **Multithreading**: `std::thread` pool with AVX2 kernels. |
+| **1. Naive** | `8.178 s` | 1.0x | Baseline $O(N^3)$ algorithm. Heavy cache misses. |
+| **2. Optimized** | **0.171 s** | **47.64x** | **Loop Reordering (`i-k-j`)**: Maximizes Spatial Locality. |
+| **3. Tiled** | `0.244 s` | 33.47x | **L1 Cache Blocking**: 64x64 tiles to prevent Cache Thrashing. |
+| **4. AVX2 (Manual)** | `0.280 s` | 29.17x | **Explicit Vectorization**: Using `_mm256_fmadd_pd` manually. |
+| **5. Parallel AVX** | `0.202 s` | 40.41x | **Multithreading**: `std::thread` pool with AVX2 kernels. |
 
 ### 📊 Visual Analysis
 ![Benchmark Graph](benchmark_graph.png)
