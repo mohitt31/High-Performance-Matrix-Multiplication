@@ -1,0 +1,18 @@
+name: Benchmark
+on: [push]
+jobs:
+  run-benchmark:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check CPU
+        run: lscpu
+      - name: Compile
+        run: g++ -O3 -mavx2 -mfma -pthread main.cpp -o matrix
+      - name: Run
+        run: ./matrix
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: results
+          path: results.csv
