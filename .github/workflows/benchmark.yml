@@ -7,9 +7,17 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check CPU
         run: lscpu
-      - name: Compile
-        run: g++ -O3 -mavx2 -mfma -pthread main.cpp -o matrix
-      - name: Run
+      - name: Compile and Run TSan
+        run: |
+          g++ -O3 -mavx2 -mfma -pthread -fsanitize=thread main.cpp -o matrix_tsan
+          ./matrix_tsan
+      - name: Compile Optimized
+        run: g++ -O3 -mavx2 -mfma -pthread -march=native main.cpp -o matrix
+      - name: Run Benchmark 1
+        run: ./matrix
+      - name: Run Benchmark 2
+        run: ./matrix
+      - name: Run Benchmark 3
         run: ./matrix
       - name: Upload results
         uses: actions/upload-artifact@v4

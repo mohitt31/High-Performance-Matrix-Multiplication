@@ -62,14 +62,21 @@ void multiplyTiled(const Matrix& A, const Matrix& B, Matrix& C){
 }
 
 void multiplyAVX(const Matrix& A, const Matrix& B, Matrix& C){
-    for(int i=0 ; i<N ; i++){
-        for(int k=0; k<N ; k++){
-            __m256d vecA = _mm256_set1_pd(A[i*N + k]);
-            for(int j=0 ; j<N ; j+=4){
-                __m256d vecC = _mm256_loadu_pd(&C[i*N + j]);
-                __m256d vecB = _mm256_loadu_pd(&B[k*N + j]);
-                vecC = _mm256_fmadd_pd(vecA,vecB,vecC);
-                _mm256_storeu_pd(&C[i*N + j], vecC);
+    int blocksize = 64;
+    for(int bi = 0; bi<N ; bi+=blocksize){
+        for(int bj = 0 ; bj<N ; bj+=blocksize){
+            for(int bk = 0; bk<N ; bk+= blocksize){
+                for(int i= bi ; i<min(bi+blocksize,N); i++){
+                    for(int j= bj; j<min(bj+blocksize,N); j+=4){
+                        __m256d vecC = _mm256_loadu_pd(&C[i*N + j]);
+                        for(int k = bk ; k<min(bk+blocksize,N); k++){
+                            __m256d vecA = _mm256_set1_pd(A[i*N + k]);
+                            __m256d vecB = _mm256_loadu_pd(&B[k*N + j]);
+                            vecC = _mm256_fmadd_pd(vecA, vecB, vecC);
+                        }
+                        _mm256_storeu_pd(&C[i*N + j], vecC);
+                    }
+                }
             }
         }
     }
@@ -84,14 +91,21 @@ void multiplyParallelAVX(const Matrix& A, const Matrix& B, Matrix& C){
         int startRow = t*rowPerThread;
         int endRow = (t == numthreads-1) ? N:(startRow + rowPerThread);
         threads.emplace_back([&,startRow,endRow](){
-            for(int i=startRow ; i<endRow ; i++){
-                for(int k=0 ; k<N ; k++){
-                    __m256d vecA = _mm256_set1_pd(A[i*N + k]);
-                    for(int j=0 ; j<N ; j+=4){
-                        __m256d vecC = _mm256_loadu_pd(&C[i*N + j]);
-                        __m256d vecB = _mm256_loadu_pd(&B[k*N + j]);
-                        vecC = _mm256_fmadd_pd(vecA, vecB, vecC);
-                        _mm256_storeu_pd(&C[i*N + j], vecC);
+            int blocksize = 64;
+            for(int bi = startRow; bi<endRow ; bi+=blocksize){
+                for(int bj = 0 ; bj<N ; bj+=blocksize){
+                    for(int bk = 0; bk<N ; bk+= blocksize){
+                        for(int i= bi ; i<min(bi+blocksize,endRow); i++){
+                            for(int j= bj; j<min(bj+blocksize,N); j+=4){
+                                __m256d vecC = _mm256_loadu_pd(&C[i*N + j]);
+                                for(int k = bk ; k<min(bk+blocksize,N); k++){
+                                    __m256d vecA = _mm256_set1_pd(A[i*N + k]);
+                                    __m256d vecB = _mm256_loadu_pd(&B[k*N + j]);
+                                    vecC = _mm256_fmadd_pd(vecA, vecB, vecC);
+                                }
+                                _mm256_storeu_pd(&C[i*N + j], vecC);
+                            }
+                        }
                     }
                 }
             }
