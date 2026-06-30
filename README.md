@@ -9,22 +9,22 @@
 
 This project implements a highly optimized Matrix Multiplication engine. Unlike standard implementations that rely on compiler auto-vectorization, this project utilizes **Manual SIMD Intrinsics (AVX2)** and **Multithreading** to squeeze every bit of performance from the CPU.
 
-Achieved a **12.7x Speedup** on a dual-core Cloud Environment (Google Colab).
+Achieved a **25.68x Speedup** on macOS (12 Threads) with verified correctness checks.
 
 ---
 
 ## 🏎️ Performance Benchmarks (1024x1024)
 
-Benchmarks recorded on **Google Colab (Linux vCPU)**.
-*(Note: On dedicated 8-core hardware, speedups are expected to exceed 30x)*
+Benchmarks recorded on **macOS (12 Threads)**.
+*(Note: Median execution time over 5 runs with strict max absolute difference correctness checking)*
 
-| Optimization Level | Execution Time | Speedup | Technical Breakdown |
+| Optimization Level | Median Time | Speedup | Technical Breakdown |
 | :--- | :--- | :--- | :--- |
-| **1. Naive** | `6.140 s` | 1.0x | Baseline $O(N^3)$ algorithm. Heavy cache misses. |
-| **2. Optimized** | `0.550 s` | 11.1x | **Loop Reordering (`i-k-j`)**: Maximizes Spatial Locality. |
-| **3. Tiled** | **0.480 s** | **12.7x** | **L1 Cache Blocking**: 64x64 tiles to prevent Cache Thrashing. |
-| **4. AVX2 (Manual)** | `0.790 s` | 7.7x | **Explicit Vectorization**: Using `_mm256_fmadd_pd` manually. |
-| **5. Parallel AVX** | `0.600 s` | 10.1x | **Multithreading**: `std::thread` pool with AVX2 kernels. |
+| **1. Naive** | `5.093 s` | 1.0x | Baseline $O(N^3)$ algorithm. Heavy cache misses. |
+| **2. Optimized** | `0.301 s` | 16.89x | **Loop Reordering (`i-k-j`)**: Maximizes Spatial Locality. |
+| **3. Tiled** | **0.198 s** | **25.68x** | **L1 Cache Blocking**: 64x64 tiles to prevent Cache Thrashing. |
+| **4. AVX2 (Manual)** | `1.218 s` | 4.18x | **Explicit Vectorization**: Using `_mm256_fmadd_pd` manually. |
+| **5. Parallel AVX** | `0.457 s` | 11.12x | **Multithreading**: `std::thread` pool with AVX2 kernels. |
 
 ### 📊 Visual Analysis
 ![Benchmark Graph](benchmark_graph.png)
