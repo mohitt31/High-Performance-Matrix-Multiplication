@@ -1,6 +1,6 @@
 method,median_time_seconds,speedup_vs_naive,correctness_max_abs_diff,passed
-Naive,8.17843,1.00,0.00e+00,true
-Optimized,0.17169,47.64,3.64e-12,true
-Tiled,0.24435,33.47,3.64e-12,true
-AVX (Manual),0.28041,29.17,3.64e-12,true
-Parallel AVX,0.20241,40.41,3.64e-12,true
+Naive,4.47164,1.00,0.00e+00,true
+Optimized,0.30155,14.83,0.00e+00,true
+Tiled,0.23121,19.34,0.00e+00,true
+AVX (Manual),0.21980,20.34,0.00e+00,true
+Parallel AVX,0.05949,75.17,0.00e+00,true

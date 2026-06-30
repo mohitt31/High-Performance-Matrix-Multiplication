@@ -9,22 +9,27 @@
 
 This project implements a highly optimized Matrix Multiplication engine. Unlike standard implementations that rely on compiler auto-vectorization, this project utilizes **Manual SIMD Intrinsics (AVX2)** and **Multithreading** to squeeze every bit of performance from the CPU.
 
-Achieved a **47.64x Speedup** on a Linux x86_64 environment (AMD EPYC 9V74 80-Core) with verified correctness checks.
+Achieved an **75x Speedup** natively on Linux x86_64 hardware with strictly verified correctness checks.
 
 ---
 
 ## 🏎️ Performance Benchmarks (1024x1024)
 
-Benchmarks recorded natively on **Linux x86_64 (AMD EPYC 9V74 80-Core Processor)**.
+Benchmarks recorded natively on **Linux x86_64 (Intel Xeon Platinum 8272CL CPU @ 2.60GHz)**.
 *(Note: Median execution time over 5 runs with strict max absolute difference correctness checking)*
 
 | Optimization Level | Median Time | Speedup | Technical Breakdown |
 | :--- | :--- | :--- | :--- |
-| **1. Naive** | `8.178 s` | 1.0x | Baseline $O(N^3)$ algorithm. Heavy cache misses. |
-| **2. Optimized** | **0.171 s** | **47.64x** | **Loop Reordering (`i-k-j`)**: Maximizes Spatial Locality. |
-| **3. Tiled** | `0.244 s` | 33.47x | **L1 Cache Blocking**: 64x64 tiles to prevent Cache Thrashing. |
-| **4. AVX2 (Manual)** | `0.280 s` | 29.17x | **Explicit Vectorization**: Using `_mm256_fmadd_pd` manually. |
-| **5. Parallel AVX** | `0.202 s` | 40.41x | **Multithreading**: `std::thread` pool with AVX2 kernels. |
+| **1. Naive** | `4.471 s` | 1.0x | Baseline $O(N^3)$ algorithm. Heavy cache misses. |
+| **2. Optimized** | `0.301 s` | 14.83x | **Loop Reordering (`i-k-j`)**: Maximizes Spatial Locality. |
+| **3. Tiled** | `0.231 s` | 19.34x | **L1 Cache Blocking**: 64x64 tiles to prevent Cache Thrashing. |
+| **4. AVX2 (Manual)** | `0.219 s` | 20.34x | **Explicit Vectorization**: Using `_mm256_fmadd_pd` manually. |
+| **5. Parallel AVX** | **0.059 s** | **75.17x** | **Multithreading**: `std::thread` pool with AVX2 kernels. |
+
+### 🔍 Architectural Findings: Memory-Bound AVX Loops vs GCC Auto-Vectorization
+During rigorous benchmarking against AMD EPYC and Intel Xeon environments, an anomaly was discovered: the `Optimized` (auto-vectorized GCC) kernel initially outperformed the manually-unrolled `AVX2` intrinsics. Analysis revealed that the naive `i-k-j` order inside the AVX loop forced the compiler to load and store the `C` matrix on every single element of `k` — a catastrophic memory bottleneck. 
+
+This repository was subsequently updated to use an `i-j-k` accumulation order for the manual intrinsics path with `64x64` L1 cache blocking, allowing the kernel to load `C` only once into the `YMM` register, accumulate across `k`, and store `C` once. With this fix, the manual AVX implementations now natively dominate the execution profile, achieving up to 75x speedup with ThreadSanitizer-verified, lock-free parallel scaling.
 
 ### 📊 Visual Analysis
 ![Benchmark Graph](benchmark_graph.png)
