@@ -1,0 +1,4 @@
+matrix
+matrix_tsan
+*.o
+build/

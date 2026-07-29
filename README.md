@@ -1,76 +1,44 @@
-# ⚡ High-Performance Matrix Multiplication Engine (HPC)
+# High-Performance Matrix Multiplication (AVX2, C++17)
 
-![C++](https://img.shields.io/badge/Standard-C++17-blue?style=for-the-badge&logo=c%2B%2B)
-![Optimization](https://img.shields.io/badge/Optimization-Manual%20AVX2-orange?style=for-the-badge)
-![Technique](https://img.shields.io/badge/Technique-Cache%20Blocking-green?style=for-the-badge)
-![Build](https://img.shields.io/badge/Build-Passing-brightgreen?style=for-the-badge)
+[![Benchmark](https://github.com/mohitt31/High-Performance-Matrix-Multiplication/actions/workflows/benchmark.yml/badge.svg)](https://github.com/mohitt31/High-Performance-Matrix-Multiplication/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-> **"Optimizing beyond the Compiler's limits."**
+Dense `1024×1024` matrix multiplication, built up in stages from a naive triple loop to a cache-blocked, AVX2/FMA, multithreaded kernel, with correctness checked at every stage.
 
-This project implements a highly optimized Matrix Multiplication engine. Unlike standard implementations that rely on compiler auto-vectorization, this project utilizes **Manual SIMD Intrinsics (AVX2)** and **Multithreading** to squeeze every bit of performance from the CPU.
+## Results (1024×1024, double precision)
 
-Achieved an **75x Speedup** natively on Linux x86_64 hardware with strictly verified correctness checks.
+Measured on GitHub's hosted `ubuntu-latest` runner (Intel Xeon Platinum 8272CL @ 2.60GHz), median of 3 CI runs, correctness verified against the naive result at every stage (max abs diff = 0.0 for all). Raw data: [`results.csv`](results.csv), reproduced on every push via [`.github/workflows/benchmark.yml`](.github/workflows/benchmark.yml).
 
----
+| Stage | Median time | Speedup vs naive | What changed |
+|---|---:|---:|---|
+| Naive | 4.472 s | 1.0× | Baseline O(N³), `i-j-k` order |
+| Loop-reordered | 0.302 s | 14.8× | `i-k-j` order for spatial locality |
+| Cache-blocked | 0.231 s | 19.3× | 64×64 tiles sized to fit L1 |
+| AVX2 (manual) | 0.220 s | 20.3× | Explicit `_mm256_fmadd_pd`, `i-j-k` accumulation |
+| Parallel AVX2 | 0.059 s | **75.2×** | `std::thread` pool, row-sliced, no locks |
 
-## 🏎️ Performance Benchmarks (1024x1024)
+## A real finding: manual AVX2 was initially *slower* than auto-vectorized code
 
-Benchmarks recorded natively on **Linux x86_64 (Intel Xeon Platinum 8272CL CPU @ 2.60GHz)**.
-*(Note: Median execution time over 5 runs with strict max absolute difference correctness checking)*
+The first version of the manual-intrinsics kernel used the same `i-k-j` loop order as the scalar version, and it underperformed plain `-O3` auto-vectorization. The cause: `i-k-j` forces the AVX kernel to load and store the accumulator into `C` on every iteration of `k`, turning it into a memory-bound loop. Switching the manual-intrinsics path to `i-j-k` accumulation — load `C` into a YMM register once, accumulate across all of `k`, store once — fixed it. This is the kind of thing that's easy to get backwards when hand-vectorizing, and worth stating plainly rather than only showing the final numbers.
 
-| Optimization Level | Median Time | Speedup | Technical Breakdown |
-| :--- | :--- | :--- | :--- |
-| **1. Naive** | `4.471 s` | 1.0x | Baseline $O(N^3)$ algorithm. Heavy cache misses. |
-| **2. Optimized** | `0.301 s` | 14.83x | **Loop Reordering (`i-k-j`)**: Maximizes Spatial Locality. |
-| **3. Tiled** | `0.231 s` | 19.34x | **L1 Cache Blocking**: 64x64 tiles to prevent Cache Thrashing. |
-| **4. AVX2 (Manual)** | `0.219 s` | 20.34x | **Explicit Vectorization**: Using `_mm256_fmadd_pd` manually. |
-| **5. Parallel AVX** | **0.059 s** | **75.17x** | **Multithreading**: `std::thread` pool with AVX2 kernels. |
-
-### 🔍 Architectural Findings: Memory-Bound AVX Loops vs GCC Auto-Vectorization
-During rigorous benchmarking against AMD EPYC and Intel Xeon environments, an anomaly was discovered: the `Optimized` (auto-vectorized GCC) kernel initially outperformed the manually-unrolled `AVX2` intrinsics. Analysis revealed that the naive `i-k-j` order inside the AVX loop forced the compiler to load and store the `C` matrix on every single element of `k` — a catastrophic memory bottleneck. 
-
-This repository was subsequently updated to use an `i-j-k` accumulation order for the manual intrinsics path with `64x64` L1 cache blocking, allowing the kernel to load `C` only once into the `YMM` register, accumulate across `k`, and store `C` once. With this fix, the manual AVX implementations now natively dominate the execution profile, achieving up to 75x speedup with ThreadSanitizer-verified, lock-free parallel scaling.
-
-### 📊 Visual Analysis
 ![Benchmark Graph](benchmark_graph.png)
 
----
+## Build & run
 
-## 🧠 Why This Project is Different?
+Requires an x86-64 CPU with AVX2 + FMA and a compiler with `pthread` support.
 
-Most optimizations rely on the compiler to "Auto-Vectorize" code. This project goes a step further by using **Hardware Intrinsics**:
-
-### 1. Manual AVX2 Implementation (`immintrin.h`)
-Instead of hoping the compiler optimizes the math, I explicitly mapped data to **256-bit YMM Registers**.
-* **Instruction:** `_mm256_fmadd_pd` (Fused Multiply-Add).
-* **Throughput:** Processes **4 Double-Precision** numbers in a single CPU cycle.
-
-### 2. Cache-Aware Tiling
-Implemented **Block Matrix Multiplication** with a tile size of `64`. This ensures that the working set fits entirely inside the **L1 Cache** (32KB-64KB), reducing expensive RAM fetches by order of magnitude.
-
-### 3. Lock-Free Parallelism
-Used `std::thread` with a lambda-based worker model. The matrix is sliced row-wise (`startRow` to `endRow`), ensuring **Zero Race Conditions** without needing Mutex locks (which slow down performance).
-
----
-
-## 💻 How to Run
-
-### Prerequisites
-* **CPU:** Intel/AMD with AVX2 Support.
-* **Compiler:** GCC (g++) or Clang.
-* **OS:** Linux/WSL.
-
-### Build & Benchmark
 ```bash
-# Compile with O3 optimizations, AVX2 flags, and pthread linking
 g++ -O3 -mavx2 -mfma -pthread main.cpp -o matrix
-
-# Run the engine
 ./matrix
+```
 
----
+CI also runs a ThreadSanitizer build (`-fsanitize=thread`) to check the row-sliced parallel kernel for races.
 
-## 👨‍💻 Author
+## Scope and caveats
 
-*Mohit Prajapati*
-*High-Performance Computing & Systems Engineering Enthusiast*
+- Single square size (1024×1024), double precision, one CPU (GH Actions runner). No sweep over matrix size, no comparison against a reference BLAS (OpenBLAS/MKL) — the honest baseline here is the naive triple loop, not a production GEMM.
+- Correctness is checked by comparing every optimized stage's output to the naive result (`main_test.cpp`), not by an independent reference.
+
+## Author
+
+Mohit Prajapati
