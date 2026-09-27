@@ -36,7 +36,7 @@ CI also runs a ThreadSanitizer build (`-fsanitize=thread`) to check the row-slic
 
 ## Scope and caveats
 
-- Single square size (1024×1024), double precision, one CPU (GH Actions runner). No sweep over matrix size, no comparison against a reference BLAS (OpenBLAS/MKL) — the honest baseline here is the naive triple loop, not a production GEMM.
+- Single square size (1024×1024), double precision, one CPU (GH Actions runner). No sweep over matrix size, no comparison against a reference BLAS (OpenBLAS/MKL). The baseline here is the naive triple loop, not a production GEMM.
 - Correctness is checked by comparing every optimized stage's output to the naive result (`main_test.cpp`), not by an independent reference.
 
 ## Author
